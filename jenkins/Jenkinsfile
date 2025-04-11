@@ -1,0 +1,33 @@
+pipeline {
+    agent any
+    environment {
+        IMAGE_NAME = "<your-dockerhub-username>/jenkins-demo"
+    }
+    stages {
+        stage('Clone Repo') {
+            steps {
+                git 'https://github.com/your-repo/jenkins-ci-cd-demo.git'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $IMAGE_NAME .'
+            }
+        }
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([string(credentialsId: 'dockerhub-pass', variable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u <your-dockerhub-username> --password-stdin
+                        docker push $IMAGE_NAME
+                    '''
+                }
+            }
+        }
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh 'helm upgrade --install jenkins-demo helm-chart --set image.repository=$IMAGE_NAME'
+            }
+        }
+    }
+}
